@@ -4,29 +4,11 @@ You can use the editor on GitHub to maintain and preview the content for your we
 
 Whenever you commit to this repository, GitHub Pages will run [Jekyll](https://jekyllrb.com/) to rebuild the pages in your site, from the content in your Markdown files.
 
-### Markdown
+### HomeWork 1
 
-Markdown is a lightweight and easy-to-use syntax for styling your writing. It includes conventions for
-
-```markdown
-Syntax highlighted code block
-
-# Header 1
-## Header 2
-### Header 3
-
-- Bulleted
-- List
-
-1. Numbered
-2. List
-
-**Bold** and _Italic_ and `Code` text
-
-[Link](url) and ![Image](src)
-```
-
-For more details see [GitHub Flavored Markdown](https://guides.github.com/features/mastering-markdown/).
+[Homework 1 html file](https://github.com/BU-IE-360/spring24-YigitMemceroktay/blob/main/YigitMemceroktay.html) 
+[Homework 1 pdf file](https://github.com/BU-IE-360/spring24-YigitMemceroktay/blob/main/YigitMemceroktay.pdf)
+[Homework 1 rmd file](https://github.com/BU-IE-360/spring24-YigitMemceroktay/blob/main/YigitMemceroktay.Rmd)
 
 ### Jekyll Themes
 
