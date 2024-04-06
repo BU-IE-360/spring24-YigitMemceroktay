@@ -6,9 +6,9 @@ Whenever you commit to this repository, GitHub Pages will run [Jekyll](https://j
 
 ### HomeWork 1
 
-- [Homework 1 html file](https://github.com/BU-IE-360/spring24-YigitMemceroktay/blob/main/YigitMemceroktay.html) 
-- [Homework 1 pdf file](https://github.com/BU-IE-360/spring24-YigitMemceroktay/blob/main/YigitMemceroktay.pdf)
-- [Homework 1 rmd file](https://github.com/BU-IE-360/spring24-YigitMemceroktay/blob/main/YigitMemceroktay.Rmd)
+- [Homework 1 html file](https://github.com/BU-IE-360/spring24-YigitMemceroktay/YigitMemceroktay.html) 
+- [Homework 1 pdf file](https://github.com/BU-IE-360/spring24-YigitMemceroktay/YigitMemceroktay.pdf)
+- [Homework 1 rmd file](https://github.com/BU-IE-360/spring24-YigitMemceroktay/YigitMemceroktay.Rmd)
 
 ### Jekyll Themes
 
