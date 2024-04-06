@@ -1,0 +1,462 @@
+---
+title: "Homework 1"
+author: "Yigit Memceroktay"
+date: "2024-04-06"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+# Introduction
+
+Author: Yiğit Memceroktay
+
+Number:2020402006
+
+Course: IE360
+
+#### The data-sets that I chose for the analysis are: CPI of Turkey (consumer price index), Unemployment rate and total house sales in Turkey. The data-sets contain data for the dates between 1/1/2015-1/12/2021.
+
+Importing packages
+
+```{r message=FALSE, warning=FALSE}
+require(data.table)
+require(lubridate)
+require(forecast)
+require(repr)
+require(openxlsx)
+require(ggplot2)
+require(data.table)
+require(skimr)
+require(GGally)
+require(ggcorrplot)
+require(forecast)
+require(tidyverse)
+require(htmltools)
+require(readxl)
+require(corrplot)
+
+library(reshape2)
+library(corrplot)
+library(readxl)
+library(tidyverse)
+library(data.table)
+library(lubridate)
+library(forecast)
+library(skimr)
+library(repr)
+
+```
+
+Imported the excel file that contains 3 data-sets for time-series analysis. The data-sets that I chose are: CPI (consumer price index), unemployment rate, and total amount of houses sold. The table below shows the correlation between the data-sets. As you can see, no two pair has correlation more than 0.5 therefore the data-sets are suitable for this project.
+
+```{r message=TRUE, warning=FALSE}
+options(repr.plot.width=12.7, repr.plot.height=8)
+
+data_path='C:\\Users\\Yalikent\\Downloads\\forecast.xlsx'
+forecast_data = read_excel(data_path, sheet="EVDS")
+forecast_data_table =  as.data.table(forecast_data)
+cor_matrix = cor(forecast_data_table)
+melted_cor_matrix <- melt(cor_matrix)
+
+```
+
+Correlation Table
+
+```{r}
+# Use ggplot to create the heatmap
+ggplot(melted_cor_matrix, aes(Var1, Var2, fill = value)) +
+  geom_tile(color = "white") +
+  scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(x = '', y = '', title = 'Correlation Heatmap', fill = 'Correlation') +
+  geom_text(aes(label = sprintf("%.2f", value)), color = "black", size = 4)
+
+```
+
+Importing the excel file that contains both the forecast variables (CPI, etc.) and predictor variables (number of searches on google, consumer confidence index etc.)
+
+```{r}
+data_path='C:\\Users\\Yalikent\\Downloads\\Book2.xlsx'
+all_data <- read_excel(data_path)
+all_data_table=data.table(all_data)
+```
+
+# Model 1 (Total House Sales in Turkey)
+
+In the initial model, my objective is to examine the data-set representing the total number of house sales in Turkey. The subsequent graph illustrates the overall house sales spanning from 2015 to 2021 in Turkey.
+
+```{r}
+all_data_table[, Date := as.Date(Date, format = "%Y-%m-%d")]
+ggplot(all_data_table ,aes(x=Date,y=total_house_sales, group=1)) + geom_line() + scale_x_date(date_breaks = "1 year", date_labels = "%Y") +  
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  
+
+```
+
+\
+I decided to employ the interest rate and the volume of Google searches for houses to forecast the total house sales in Turkey. Below, the scatter plot is presented with a linear regression line depicting the relationship between interest rate and Google searches.
+
+```{r}
+ggplot(all_data_table ,aes(x=interest_rate,y=total_house_sales)) + geom_point() +geom_smooth(method='lm')
+```
+
+```{r}
+ggplot(all_data_table ,aes(x= google_house_search,y=total_house_sales)) + geom_point() +geom_smooth(method='lm')
+```
+
+The functions add new columns to **`all_data_table`**: **`trnd`** assigns sequential numbers to rows, **`month`** and **`year`** extract and store the month and year from a **`Date`** column as character strings, aiding in trend and temporal analysis.
+
+```{r}
+all_data_table[,trnd:=1:.N]
+all_data_table[,month:=as.character(month(Date,label=T))]
+all_data_table[,year:=as.character(year(Date))]
+
+```
+
+Below you can see the correlation between the data-sets for each month.
+
+```{r}
+ggplot(all_data_table,aes(x=interest_rate,y=total_house_sales)) +
+        geom_point() + geom_smooth(method=lm,linewidth=2) + facet_wrap(~month,drop = TRUE)
+```
+
+```{r}
+ggplot(all_data_table,aes(x=google_house_search,y=total_house_sales)) +
+        geom_point() + geom_smooth(method=lm,linewidth=2) + facet_wrap(~month)
+```
+
+The graph below shows the acf plot for total_house_sales the data-set. This plot shows whether the data is correlated within itself.
+
+```{r}
+acf(all_data_table$total_house_sales)
+```
+
+Lets's start building the model. The linear regression analysis, with total house sales as the response variable and a trend indicator as the predictor, shows a positive trend (coefficient = 306.5, p-value = 0.0345), indicating a slight increase in house sales over time. However, the model explains only a small portion of the variance (R-squared = 0.053), suggesting other factors also influence hous
+
+```{r}
+model=lm(total_house_sales~trnd,all_data_table)
+summary(model)
+```
+
+```{r}
+checkresiduals(model$residuals)
+```
+
+```{r}
+tmp_data=copy(all_data_table)
+tmp_data[,actual:=total_house_sales]
+tmp_data[,predicted_trend:=predict(model,tmp_data)]
+tmp_data[,residual_trend:=actual-predicted_trend]
+ggplot(tmp_data ,aes(x=Date)) +
+        geom_line(aes(y=actual,color='real')) + 
+        geom_line(aes(y=predicted_trend,color='predicted'))
+```
+
+```{r}
+plot(model)
+```
+
+For next step I added the interest rate factor to the model. In this linear regression model, total house sales are predicted by trend and interest rate, revealing a positive association with the trend (coefficient = 439.9, p-value = 0.00399) and a negative relationship with the interest rate (coefficient = -2086.5, p-value = 0.01552). The model has an improved fit compared to the previous one, with an R-squared value of 0.1198, indicating that these factors together account for approximately 12% of the variance in house sales.
+
+```{r}
+model=lm(total_house_sales~trnd+interest_rate,all_data_table)
+summary(model)
+```
+
+```{r}
+checkresiduals(model$residuals)
+```
+
+```{r}
+tmp_data=copy(all_data_table)
+tmp_data[,actual:=total_house_sales]
+tmp_data[,predicted_trend_house_interest_rate:=predict(model,tmp_data)]
+tmp_data[,residual_trend_house_interest_rate:=actual-predicted_trend_house_interest_rate]
+#head(tmp)
+ggplot(tmp_data ,aes(x=Date)) +
+        geom_line(aes(y=actual,color='real')) + 
+        geom_line(aes(y=predicted_trend_house_interest_rate,color='predicted'))
+
+
+```
+
+```{r}
+plot(model)
+```
+
+For the next step I'm also adding the number of searches for houses on google to our model. In the expanded linear regression model, total house sales are influenced by trend, interest rate, and Google searches for houses. Google searches have a strong positive effect (coefficient = 1801.9, p-value \< 0.0001), while trend and interest rate have less significant impacts. The model’s R-squared value of 0.35 indicates it explains 35% of the variance in total house sales, showing a considerable improvement in model fit and suggesting that Google searches are a significant predictor of house sales.
+
+```{r}
+model=lm(total_house_sales~trnd+interest_rate+google_house_search,all_data_table)
+summary(model)
+```
+
+```{r}
+checkresiduals(model$residuals)
+```
+
+```{r}
+tmp_data=copy(all_data_table)
+tmp_data[,actual:=total_house_sales]
+tmp_data[,predicted_trend_house_interest_rate_search:=predict(model,tmp_data)]
+tmp_data[,residual_trend_house_interest_rate_search:=actual-predicted_trend_house_interest_rate_search]
+#head(tmp)
+ggplot(tmp_data ,aes(x=Date)) +
+        geom_line(aes(y=actual,color='real')) + 
+        geom_line(aes(y=predicted_trend_house_interest_rate_search,color='predicted'))
+
+```
+
+```{r}
+plot(model)
+```
+
+Finally, we add year data to our model and see the developments. In this regression model, total house sales are predicted using trend, interest rate, Google searches, and year. The model shows significant yearly variations with strong negative coefficients from 2016 to 2021, indicating a substantial decrease in house sales over the years. The trend and Google searches positively affect sales, with Google searches showing a particularly strong positive relationship. The model’s R-squared value of 0.5604 suggests it explains approximately 56% of the variance in total house sales, significantly improving the model's explanatory power and highlighting the impact of these variables, especially the yearly changes, on house sales.
+
+```{r}
+model=lm(total_house_sales~trnd+interest_rate+google_house_search+year,all_data_table)
+summary(model)
+```
+
+```{r}
+checkresiduals(model$residuals)
+```
+
+```{r}
+
+tmp_data=copy(all_data_table)
+tmp_data[,actual:=total_house_sales]
+tmp_data[,predicted_trend_house_interest_rate_search:=predict(model,tmp_data)]
+tmp_data[,residual_trend_house_interest_rate_search:=actual-predicted_trend_house_interest_rate_search]
+#head(tmp)
+ggplot(tmp_data ,aes(x=Date)) +
+        geom_line(aes(y=actual,color='real')) + 
+        geom_line(aes(y=predicted_trend_house_interest_rate_search,color='predicted'))
+
+```
+
+```{r}
+plot(model)
+```
+
+# MODEL 2 (CPI)
+
+For the second model, I chose to examine the Consumer Price Index (CPI) data-set in Turkey covering the period from 2015 to 2023.
+
+```{r}
+ggplot(all_data_table ,aes(x=Date,y=CPI, group=1)) + geom_line()
+```
+
+I have decided to use dollar/tl exchange rate to predict CPI. The graph below is the scatter plot and regression line for dollar/tl exchange rate and CPI.
+
+```{r}
+ggplot(all_data_table ,aes(x=dollarXtl,y=CPI)) + geom_point() +geom_smooth(method='lm')
+```
+
+The graphs below shows the correlation of the CPI and dollar/tl exchange rate for each month.
+
+```{r}
+ggplot(all_data_table,aes(x=dollarXtl,y=CPI)) +
+        geom_point() + geom_smooth(method=lm,linewidth=2) + facet_wrap(~month)
+```
+
+AFC plot to see if the data correlates within itself.
+
+```{r}
+acf(all_data_table$CPI)
+
+```
+
+First step is to start building the model. In this linear regression model, the Consumer Price Index (CPI) is analyzed using only the trend variable. The model shows a strong positive trend (coefficient = 4.1409, p-value \< 2e-16), indicating a significant increase in CPI over time. The high R-squared value of 0.9423 suggests that the model explains approximately 94% of the variance in CPI, demonstrating a strong linear relationship between time and CPI in the dataset.
+
+```{r}
+model=lm(CPI~trnd,all_data_table)
+summary(model)
+```
+
+```{r}
+checkresiduals(model$residuals)
+```
+
+```{r}
+tmp_data=copy(all_data_table)
+tmp_data[,actual:=CPI]
+tmp_data[,predicted_trend:=predict(model,tmp_data)]
+tmp_data[,residual_trend:=actual-predicted_trend]
+#head(tmp)
+ggplot(tmp_data ,aes(x=Date)) +
+        geom_line(aes(y=actual,color='real')) + 
+        geom_line(aes(y=predicted_trend,color='predicted'))
+```
+
+```{r}
+plot(model)
+```
+
+For the next step we are adding dollar/tl exchange rate data-set into our model. In this regression analysis, the CPI is modeled using the trend and the exchange rate (dollar to Turkish lira). The model indicates a significant positive relationship with both the trend and the exchange rate, with notably high coefficients (trnd = 1.6725, dollarXtl = 28.9434, both with p-values \< 2e-16). The model has an extremely high R-squared value of 0.9888, meaning it explains around 99% of the variance in CPI, showing a very strong linear relationship with these predictors.
+
+```{r}
+model=lm(CPI~trnd+dollarXtl,all_data_table)
+summary(model)
+```
+
+```{r}
+checkresiduals(model)
+```
+
+```{r}
+tmp_data=copy(all_data_table)
+tmp_data[,actual:=total_house_sales]
+tmp_data[,predicted_trend_dollar:=predict(model,tmp_data)]
+tmp_data[,residual_trend_dollar:=actual-predicted_trend_dollar]
+ggplot(tmp_data ,aes(x=Date)) +
+        geom_line(aes(y=actual,color='real')) + 
+        geom_line(aes(y=predicted_trend_dollar,color='predicted'))
+```
+
+```{r}
+plot(model)
+```
+
+For the next step I am adding year data to our model. In this model, CPI is predicted using the trend, the dollar to Turkish lira exchange rate, and the year. The results show significant positive effects for the trend and exchange rate on CPI. Yearly coefficients vary, with some years like 2016 and 2017 showing significant negative effects. The model has an extremely high R-squared value of 0.9966, indicating it accounts for nearly 100% of the variance in CPI, highlighting the strong influence of these factors on the CPI over time.
+
+```{r}
+model=lm((CPI)~trnd+(dollarXtl)+year,all_data_table)
+summary(model)
+```
+
+```{r}
+checkresiduals(model)
+```
+
+```{r}
+tmp_data=copy(all_data_table)
+tmp_data[,actual:=total_house_sales]
+tmp_data[,predicted_trend_dollar_year:=predict(model,tmp_data)]
+tmp_data[,residual_trend_dollar_year:=actual-predicted_trend_dollar_year]
+ggplot(tmp_data ,aes(x=Date)) +
+        geom_line(aes(y=actual,color='real')) + 
+        geom_line(aes(y=predicted_trend_dollar_year,color='predicted'))
+```
+
+```{r}
+plot(model)
+```
+
+# MODEL 3 (Unemployment Rate)
+
+For the final model, I aimed to forecast the unemployment rate, with the following graph depicting the temporal trend of unemployment in Turkey.
+
+```{r}
+ggplot(all_data_table ,aes(x=Date,y=unemployment_rate, group=1)) + geom_line()
+```
+
+I concluded that the volume of job-related searches on Google could be a reliable predictor for the unemployment rate. Below is a scatter plot with a regression line that illustrates the relationship between the unemployment rate and the frequency of Google job searches.
+
+```{r}
+ggplot(all_data_table ,aes(x=google_job_search,y=unemployment_rate)) + geom_point() +geom_smooth(method='lm')
+```
+
+The graphs below shows the correlation between number of searches in google and unemployment rate for each month.
+
+```{r}
+
+ggplot(all_data_table,aes(x=google_job_search,y=unemployment_rate)) +
+        geom_point() + geom_smooth(method=lm,linewidth=3) + facet_wrap(~month)
+
+
+```
+
+ACF to see whether there is a correlation within the data itself.
+
+```{r}
+acf(all_data_table$unemployment_rate)
+```
+
+Let's start building the model. In this linear model, the unemployment rate is regressed on a time trend. The positive trend coefficient (0.0352, p-value \< 2e-16) suggests a gradual increase in the unemployment rate over time. The model, with an R-squared of 0.3059, indicates that the trend explains about 30% of the variation in the unemployment rate.
+
+```{r}
+model=lm(unemployment_rate~trnd,all_data_table)
+summary(model)
+```
+
+```{r}
+checkresiduals(model$residuals)
+```
+
+```{r}
+tmp_data=copy(all_data_table)
+tmp_data[,actual:=unemployment_rate]
+tmp_data[,predicted_trend:=predict(model,tmp_data)]
+tmp_data[,residual_trend:=actual-predicted_trend]
+#head(tmp)
+ggplot(tmp_data ,aes(x=Date)) +
+        geom_line(aes(y=actual,color='real')) + 
+        geom_line(aes(y=predicted_trend,color='predicted'))
+```
+
+```{r}
+plot(model)
+```
+
+For next step add number of searches for jobs on google to the model. In this model, the unemployment rate is predicted using both the trend and Google job search data. The results show positive correlations for both trend (coefficient = 0.0311, p-value \< 2e-16) and Google job search volume (coefficient = 0.0431, p-value = 1.20e-05), indicating that both factors are associated with an increase in unemployment rate. The model has an R-squared of 0.453, suggesting that these variables together explain approximately 45% of the variance in the unemployment rate.
+
+```{r}
+model=lm((unemployment_rate)~trnd+(google_job_search),all_data_table)
+summary(model)
+```
+
+```{r}
+checkresiduals(model)
+```
+
+```{r}
+tmp_data = copy(all_data_table)
+tmp_data[,actual:=unemployment_rate]
+tmp_data[,predicted_trend_job_search_year:=predict(model,tmp_data)]
+tmp_data[,residual_trend_job_search_year:=actual-predicted_trend_job_search_year]
+ggplot(tmp_data ,aes(x=Date)) +
+        geom_line(aes(y=actual,color='real')) + 
+        geom_line(aes(y=predicted_trend_job_search_year,color='predicted'))
+```
+
+```{r}
+plot(model)
+```
+
+For the last step we are adding years to our model. This model predicts the unemployment rate using trend, Google job search data, and year. The negative trend coefficient suggests a slight decrease over time in the unemployment rate, but Google job searches positively correlate with unemployment, indicating that more searches are associated with higher unemployment rates. Yearly effects are significant, especially in later years, showing increasing unemployment rates. The model's R-squared value of 0.7102 means it explains 71% of the variance in unemployment, demonstrating a strong fit with the data.
+
+```{r}
+
+model=lm(unemployment_rate~trnd+google_job_search+year,all_data_table)
+summary(model)
+
+```
+
+```{r}
+checkresiduals(model$residuals)
+```
+
+```{r}
+tmp_data=copy(all_data_table)
+tmp_data[,actual:=unemployment_rate]
+tmp_data[,predicted_trend_unemployment_rate_job_search_year:=predict(model,tmp_data)]
+tmp_data[,residual_trend_unemployment_rate_job_search_year:=actual-predicted_trend_unemployment_rate_job_search_year]
+#head(tmp)
+ggplot(tmp_data ,aes(x=Date)) +
+        geom_line(aes(y=actual,color='real')) + 
+        geom_line(aes(y=predicted_trend_unemployment_rate_job_search_year,color='predicted'))
+```
+
+```{r}
+plot(model)
+```
+
+# Conclusion
+
+In the first model, focusing on total house sales in Turkey, we found a slight upward trend, suggesting a gradual increase in sales over time. However, the model’s accuracy, as indicated by an R-squared value of around 0.05, was relatively low, pointing to other influential factors not captured in the analysis. The residuals, with a wide range, hinted at significant variability unexplained by the model. Autocorrelation was also evident, suggesting that past sales figures have some influence on future ones, a detail not fully accounted for in the model.
+
+The second analysis delved into the Consumer Price Index (CPI) and demonstrated a substantial improvement in modeling accuracy, with an R-squared value close to 0.99. This high R-squared value indicated that the model, which included the trend and exchange rate variables, could account for most of the variability in the CPI. The residuals were considerably smaller, implying a better fit of the model to the data. The precise estimation of CPI changes highlighted the strong impact of the included variables, although the exact autocorrelation values were not specified, the close fit suggests that the model captured the underlying pattern effectively.
+
+The third model aimed to predict the unemployment rate, incorporating variables such as trend, Google job search data, and annual changes. This model achieved an R-squared value of about 0.71, indicating a good level of fit and a substantial improvement over the first model. It managed to capture significant year-to-year fluctuations and showed that Google search trends for jobs had a notable effect on the unemployment rate. The model's residuals were smaller and more consistent than in the first model, indicating less unexplained variance. However, like the other models, it exhibited some degree of autocorrelation, suggesting that incorporating additional lagged variables or adjusting the model could potentially improve its predictive power.
