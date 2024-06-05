@@ -10,8 +10,8 @@ Whenever you commit to this repository, GitHub Pages will run [Jekyll](https://j
 - [Homework 1 pdf file](https://bu-ie-360.github.io/spring24-YigitMemceroktay/YigitMemceroktay.html)
 - [Homework 1 rmd file](https://bu-ie-360.github.io/spring24-YigitMemceroktay/YigitMemceroktay.Rmd)
 ### Final Project
--[Final Project html file](https://bu-ie-360.github.io/spring24-YigitMemceroktay/IE360Final.html)
--[Final Project rmd file](https://bu-ie-360.github.io/spring24-YigitMemceroktay/IE360Final.rmd)
+- [Final Project html file](https://bu-ie-360.github.io/spring24-YigitMemceroktay/IE360Final.html)
+- [Final Project rmd file](https://bu-ie-360.github.io/spring24-YigitMemceroktay/IE360Final.rmd)
 ### Jekyll Themes
 
 Your Pages site will use the layout and styles from the Jekyll theme you have selected in your repository settings. The name of this theme is saved in the Jekyll `_config.yml` configuration file.
